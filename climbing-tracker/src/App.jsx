@@ -24,3 +24,5 @@ export default function App() {
   )
 }
 console.log(import.meta.env.VITE_SUPABASE_URL)
+console.log('url:', import.meta.env.VITE_SUPABASE_URL)
+console.log('key:', import.meta.env.VITE_SUPABASE_ANON_KEY)
