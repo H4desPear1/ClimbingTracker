@@ -23,3 +23,4 @@ export default function App() {
     </BrowserRouter>
   )
 }
+console.log(import.meta.env.VITE_SUPABASE_URL)
