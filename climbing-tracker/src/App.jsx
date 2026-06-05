@@ -6,6 +6,7 @@ import LogPage from './pages/Log'
 import HistoryPage from './pages/History'
 import StatsPage from './pages/Stats'
 import SessionDetail from './pages/SessionDetail'
+import ProgramPage from './pages/Program'
 
 export default function App() {
   return (
@@ -17,12 +18,10 @@ export default function App() {
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/session/:id" element={<SessionDetail />} />
+          <Route path="/program" element={<ProgramPage />} />
         </Routes>
         <BottomNav />
       </div>
     </BrowserRouter>
   )
 }
-console.log(import.meta.env.VITE_SUPABASE_URL)
-console.log('url:', import.meta.env.VITE_SUPABASE_URL)
-console.log('key:', import.meta.env.VITE_SUPABASE_ANON_KEY)
