@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { GRADES, BOARDS, SESSION_TYPES, STRENGTH_EXERCISES } from '../lib/constants'
+import { PROGRAM_DAYS } from '../lib/program'
 
 function StarRating({ value, onChange, label }) {
   return (
@@ -124,6 +125,104 @@ function StrengthRow({ log, onUpdate, onRemove }) {
   )
 }
 
+function PlanReference({ program, sessionType }) {
+  const [open, setOpen] = useState(false)
+  if (!program) return null
+
+  return (
+    <div style={{ marginBottom: 16, borderRadius: 'var(--radius)', border: `1px solid ${sessionType.color}33`, overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', background: `${sessionType.color}0d`, border: 'none',
+          padding: '12px 14px', display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18, color: sessionType.color }}>{sessionType.icon}</span>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: sessionType.color, letterSpacing: 0.5 }}>
+              Today's Plan
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
+              {program.focus} · {program.duration}
+            </div>
+          </div>
+        </div>
+        <span style={{
+          fontSize: 16, color: 'var(--muted)', transition: 'transform 0.2s',
+          transform: open ? 'rotate(45deg)' : 'none',
+        }}>+</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 14px 14px', background: 'var(--bg2)' }}>
+          {/* Warmup */}
+          {program.warmup.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 6 }}>Warm-Up</div>
+              <ul style={{ paddingLeft: 16, margin: 0 }}>
+                {program.warmup.map((w, i) => (
+                  <li key={i} style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.8 }}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Main Work */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 10, letterSpacing: 3, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>Main Work</div>
+            {program.mainWork.map((item, i) => (
+              <div key={i} style={{
+                borderLeft: `2px solid ${sessionType.color}`,
+                paddingLeft: 10, marginBottom: 10,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{item.name}</div>
+                  {item.sets && (
+                    <span style={{
+                      fontSize: 10, color: sessionType.color, background: `${sessionType.color}15`,
+                      padding: '1px 6px', borderRadius: 2, flexShrink: 0, letterSpacing: 0.5,
+                    }}>{item.sets}</span>
+                  )}
+                </div>
+                <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, marginTop: 4, marginBottom: 0 }}>{item.detail}</p>
+                {item.focus && (
+                  <div style={{ marginTop: 5, fontSize: 11, color: '#555', fontStyle: 'italic', lineHeight: 1.5 }}>
+                    → {item.focus}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Drills */}
+          {program.drills.length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 6 }}>Drills</div>
+              {program.drills.map((d, i) => (
+                <div key={i} style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>{d.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{d.detail}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Cooldown */}
+          {program.cooldown && (
+            <div style={{ marginTop: 10, padding: '8px 10px', background: 'var(--bg3)', borderRadius: 4 }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 4 }}>Cool-Down</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{program.cooldown}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const newProblem = () => ({ id: Date.now(), grade: 'V4', board: 'Main Wall', attempts: 1, sent: false, notes: '' })
 const newStrength = () => ({ id: Date.now(), exercise: 'Dead Hang', sets: 5, reps: null, hang_seconds: 10, edge_mm: 20, notes: '' })
 
@@ -133,10 +232,15 @@ export default function LogPage() {
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState('session')
 
+  const dayName = params.get('day') || ''
+  const sessionTypeKey = params.get('type') || 'hard'
+  const program = PROGRAM_DAYS.find(d => d.day === dayName) || null
+  const sessionType = SESSION_TYPES[sessionTypeKey]
+
   const [form, setForm] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
-    day_name: params.get('day') || '',
-    session_type: params.get('type') || 'hard',
+    day_name: dayName,
+    session_type: sessionTypeKey,
     overall_feel: 0,
     energy: 0,
     duration_minutes: '',
@@ -145,8 +249,6 @@ export default function LogPage() {
 
   const [problems, setProblems] = useState([])
   const [strengthLogs, setStrengthLogs] = useState([])
-
-  const sessionType = SESSION_TYPES[form.session_type]
 
   async function handleSave() {
     setSaving(true)
@@ -183,12 +285,13 @@ export default function LogPage() {
     setSaving(false)
   }
 
+  const currentSessionType = SESSION_TYPES[form.session_type]
   const tabs = ['session', 'problems', 'strength']
 
   return (
     <div className="page">
       <div style={{ padding: '28px 16px 0', borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
-        <div style={{ fontSize: 11, letterSpacing: 3, color: sessionType?.color, textTransform: 'uppercase', marginBottom: 6 }}>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: currentSessionType?.color, textTransform: 'uppercase', marginBottom: 6 }}>
           Log Session
         </div>
         <h1 style={{ fontSize: 30 }}>Record<br />Your Work</h1>
@@ -214,6 +317,9 @@ export default function LogPage() {
       </div>
 
       <div style={{ padding: 16 }}>
+        {/* Plan reference — shown on all tabs */}
+        <PlanReference program={program} sessionType={sessionType || currentSessionType} />
+
         {/* Session Tab */}
         {tab === 'session' && (
           <>
