@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { format, isToday } from 'date-fns'
+import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { WEEK_SCHEDULE, SESSION_TYPES } from '../lib/constants'
+import { PROGRAM_DAYS } from '../lib/program'
 import { useSessions, useStats } from '../hooks/useData'
 
 function getThisWeekDay() {
@@ -11,9 +12,39 @@ function getThisWeekDay() {
   return WEEK_SCHEDULE[idx]
 }
 
+function getProgramDay(dayName) {
+  return PROGRAM_DAYS.find(d => d.day === dayName) || null
+}
+
+function Collapsible({ title, accent, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ marginBottom: 8, background: 'var(--bg3)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', background: 'none', border: 'none',
+          padding: '12px 14px', display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', cursor: 'pointer', color: 'var(--muted)',
+          fontSize: 10, letterSpacing: 3, textTransform: 'uppercase',
+        }}
+      >
+        <span style={{ color: accent || 'var(--muted)' }}>{title}</span>
+        <span style={{
+          fontSize: 16, transition: 'transform 0.2s',
+          transform: open ? 'rotate(45deg)' : 'none',
+          color: 'var(--muted)',
+        }}>+</span>
+      </button>
+      {open && <div style={{ padding: '0 14px 14px' }}>{children}</div>}
+    </div>
+  )
+}
+
 export default function TodayPage() {
   const today = getThisWeekDay()
   const sessionType = SESSION_TYPES[today.type]
+  const program = getProgramDay(today.day)
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const { sessions } = useSessions(14)
   const { stats } = useStats()
@@ -53,6 +84,11 @@ export default function TodayPage() {
               </span>
               <h2 style={{ fontSize: 28, lineHeight: 1.1 }}>{sessionType.label}</h2>
               <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 6 }}>{today.day}</p>
+              {program && (
+                <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+                  {program.focus} · {program.duration}
+                </p>
+              )}
             </div>
             <div style={{ fontSize: 40, opacity: 0.3 }}>{sessionType.icon}</div>
           </div>
@@ -72,6 +108,81 @@ export default function TodayPage() {
           )}
         </div>
       </div>
+
+      {/* Today's Plan */}
+      {program && today.type !== 'rest' && (
+        <>
+          <div className="section-header">Today's Plan</div>
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+            {/* Warmup */}
+            {program.warmup.length > 0 && (
+              <Collapsible title="Warm-Up" accent={sessionType.color}>
+                <ul style={{ paddingLeft: 16, margin: 0 }}>
+                  {program.warmup.map((w, i) => (
+                    <li key={i} style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>{w}</li>
+                  ))}
+                </ul>
+              </Collapsible>
+            )}
+
+            {/* Main Work */}
+            {program.mainWork.map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  marginBottom: 8,
+                  background: 'var(--bg3)',
+                  borderRadius: 'var(--radius)',
+                  borderLeft: `3px solid ${sessionType.color}`,
+                  padding: '12px 14px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{item.name}</div>
+                  {item.sets && (
+                    <span style={{
+                      fontSize: 10, letterSpacing: 1, textTransform: 'uppercase',
+                      color: sessionType.color, background: `${sessionType.color}15`,
+                      padding: '2px 8px', borderRadius: 2, flexShrink: 0,
+                    }}>{item.sets}</span>
+                  )}
+                </div>
+                <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, marginTop: 6, marginBottom: 0 }}>{item.detail}</p>
+                {item.focus && (
+                  <div style={{
+                    marginTop: 8, padding: '6px 10px',
+                    background: 'var(--bg2)', borderLeft: '2px solid var(--faint)',
+                    fontSize: 12, color: '#666', fontStyle: 'italic', lineHeight: 1.6,
+                  }}>
+                    {item.focus}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Drills */}
+            {program.drills.length > 0 && (
+              <Collapsible title="Supplemental Drills" accent={sessionType.color}>
+                {program.drills.map((d, i) => (
+                  <div key={i} style={{ marginBottom: i < program.drills.length - 1 ? 12 : 0 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>{d.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>{d.detail}</div>
+                  </div>
+                ))}
+              </Collapsible>
+            )}
+
+            {/* Cooldown */}
+            {program.cooldown && (
+              <div style={{ marginBottom: 8, padding: '12px 14px', background: 'var(--bg3)', borderRadius: 'var(--radius)' }}>
+                <div style={{ fontSize: 10, letterSpacing: 3, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 6 }}>Cool-Down</div>
+                <div style={{ fontSize: 13, color: 'var(--muted)' }}>{program.cooldown}</div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Quick Stats */}
       {stats && (
